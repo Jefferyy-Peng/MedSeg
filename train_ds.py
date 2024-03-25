@@ -20,7 +20,6 @@ from utils.utils import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
                          AverageMeter, ProgressMeter, Summary, dict_to_cuda,
                          intersectionAndUnionGPU)
 
-
 def parse_args(args):
     parser = argparse.ArgumentParser(description="LISA Model Training")
     parser.add_argument("--local_rank", default=0, type=int, help="node rank")
@@ -59,7 +58,7 @@ def parse_args(args):
     parser.add_argument("--vqa_data", default="llava_instruct_150k", type=str)
     parser.add_argument("--reason_seg_data", default="ReasonSeg|train", type=str)
     parser.add_argument("--val_dataset", default="ReasonSeg|val", type=str)
-    parser.add_argument("--dataset_dir", default="./dataset", type=str)
+    parser.add_argument("--dataset_dir", default="/data/leo/drive1/Datasets/vis", type=str)
     parser.add_argument("--log_base_dir", default="./runs", type=str)
     parser.add_argument("--exp_name", default="lisa", type=str)
     parser.add_argument("--epochs", default=10, type=int)
@@ -108,6 +107,13 @@ def parse_args(args):
 
 def main(args):
     args = parse_args(args)
+    args.version="./model/llava/ckpt"
+    args.dataset_dir = '/data/leo/drive1/Datasets/vis'
+    args.vision_pretrained="./model/segment_anything/ckpt/sam_vit_h_4b8939.pth"
+    args.dataset = "sem_seg||refer_seg||vqa||reason_seg"
+    args.sample_rates = "9,3,3,1"
+    args.exp_name="lisa-7b"
+
     args.log_dir = os.path.join(args.log_base_dir, args.exp_name)
     if args.local_rank == 0:
         os.makedirs(args.log_dir, exist_ok=True)
@@ -149,7 +155,7 @@ def main(args):
     elif args.precision == "fp16":
         torch_dtype = torch.half
     model = LISAForCausalLM.from_pretrained(
-        args.version, torch_dtype=torch_dtype, low_cpu_mem_usage=True, **model_args
+        args.version, torch_dtype=torch_dtype, low_cpu_mem_usage=False, **model_args
     )
     model.config.eos_token_id = tokenizer.eos_token_id
     model.config.bos_token_id = tokenizer.bos_token_id
