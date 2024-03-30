@@ -110,8 +110,6 @@ def main(args):
     args.version="./model/llava/ckpt"
     args.dataset_dir = '/data/leo/drive1/Datasets/vis'
     args.vision_pretrained="./model/segment_anything/ckpt/sam_vit_h_4b8939.pth"
-    # args.vision_pretrained="./model/medsam/medsam_vit_b.pth"
-
     # args.dataset = "sem_seg||refer_seg||vqa||reason_seg"
     args.dataset = "sem_seg||refer_seg"
 

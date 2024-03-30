@@ -127,7 +127,7 @@ class MaskDecoder(nn.Module):
         )
         output_tokens = output_tokens.unsqueeze(0).expand(
             sparse_prompt_embeddings.size(0), -1, -1
-        )
+        )# expand batch size dim
 
         tokens = torch.cat((output_tokens, sparse_prompt_embeddings), dim=1)
 
