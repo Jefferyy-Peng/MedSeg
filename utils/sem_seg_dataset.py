@@ -3,126 +3,103 @@ import json
 import os
 import random
 
-import cv2
 import numpy as np
 import torch
-import torch.nn.functional as F
-from PIL import Image
-from pycocotools.coco import COCO
-from transformers import CLIPImageProcessor
 
-from model.llava import conversation as conversation_lib
 from model.segment_anything.utils.transforms import ResizeLongestSide
+from utils.utils import SHORT_QUESTION_LIST, ANSWER_LIST, ACDC_CLASSES, AMOS_CLASSES, picai_CLASSES, ATLAS_CLASSES, \
+    CHAO_CLASSES, prostate158_CLASSES
 
-from .utils import ANSWER_LIST, SHORT_QUESTION_LIST
 
-
-def init_mapillary(base_image_dir):
-    mapillary_data_root = os.path.join(base_image_dir, "mapillary")
-    with open(os.path.join(mapillary_data_root, "config_v2.0.json")) as f:
-        mapillary_classes = json.load(f)["labels"]
-    mapillary_classes = [x["readable"].lower() for x in mapillary_classes]
-    mapillary_classes = np.array(mapillary_classes)
-    mapillary_labels = sorted(
+def init_ACDC(base_image_dir):
+    ACDC_data_root = os.path.join(base_image_dir, "ACDC")
+    ACDC_classes = ACDC_CLASSES
+    ACDC_labels = sorted(
         glob.glob(
-            os.path.join(mapillary_data_root, "training", "v2.0", "labels", "*.png")
+            os.path.join(ACDC_data_root, "preprocessed", "Train", "labels", "*.npy")
         )
     )
-    mapillary_images = [
-        x.replace(".png", ".jpg").replace("v2.0/labels", "images")
-        for x in mapillary_labels
+    ACDC_images = [
+        x.replace("labels", "images")
+        for x in ACDC_labels
     ]
-    print("mapillary: ", len(mapillary_images))
-    return mapillary_classes, mapillary_images, mapillary_labels
+    print("ACDC: ", len(ACDC_images))
+    return ACDC_classes, ACDC_images, ACDC_labels
 
-
-def init_ade20k(base_image_dir):
-    with open("utils/ade20k_classes.json", "r") as f:
-        ade20k_classes = json.load(f)
-    ade20k_classes = np.array(ade20k_classes)
-    image_ids = sorted(
-        os.listdir(os.path.join(base_image_dir, "ade20k/images", "training"))
-    )
-    ade20k_image_ids = []
-    for x in image_ids:
-        if x.endswith(".jpg"):
-            ade20k_image_ids.append(x[:-4])
-    ade20k_images = []
-    for image_id in ade20k_image_ids:  # self.descriptions:
-        ade20k_images.append(
-            os.path.join(
-                base_image_dir,
-                "ade20k",
-                "images",
-                "training",
-                "{}.jpg".format(image_id),
-            )
-        )
-    ade20k_labels = [
-        x.replace(".jpg", ".png").replace("images", "annotations")
-        for x in ade20k_images
-    ]
-    print("ade20k: ", len(ade20k_images))
-    return ade20k_classes, ade20k_images, ade20k_labels
-
-
-def init_cocostuff(base_image_dir):
-    cocostuff_classes = []
-    with open("utils/cocostuff_classes.txt") as f:
-        for line in f.readlines()[1:]:
-            cocostuff_classes.append(line.strip().split(": ")[-1])
-    cocostuff_classes = np.array(cocostuff_classes)
-    cocostuff_images = []
-
-    cocostuff_labels = glob.glob(
-        os.path.join(base_image_dir, "cocostuff", "train2017", "*.png")
-    )
-    cocostuff_images = [
-        x.replace(".png", ".jpg").replace("cocostuff", "coco") for x in cocostuff_labels
-    ]
-
-    print("cocostuff: ", len(cocostuff_images))
-    return cocostuff_classes, cocostuff_images, cocostuff_labels
-
-
-def init_paco_lvis(base_image_dir):
-    coco_api_paco_lvis = COCO(
-        os.path.join(
-            base_image_dir, "vlpart", "paco", "annotations", "paco_lvis_v1_train.json"
+def init_AMOS(base_image_dir):
+    AMOS_data_root = os.path.join(base_image_dir, "AMOS")
+    AMOS_classes = AMOS_CLASSES
+    AMOS_labels = sorted(
+        glob.glob(
+            os.path.join(AMOS_data_root, "preprocessed", "Train", "labels", "*.npy")
         )
     )
-    all_classes = coco_api_paco_lvis.loadCats(coco_api_paco_lvis.getCatIds())
-    class_map_paco_lvis = {}
-    for cat in all_classes:
-        cat_split = cat["name"].strip().split(":")
-        if len(cat_split) == 1:
-            name = cat_split[0].split("_(")[0]
-        else:
-            assert len(cat_split) == 2
-            obj, part = cat_split
-            obj = obj.split("_(")[0]
-            part = part.split("_(")[0]
-            name = (obj, part)
-        class_map_paco_lvis[cat["id"]] = name
-    img_ids = coco_api_paco_lvis.getImgIds()
-    print("paco_lvis: ", len(img_ids))
-    return class_map_paco_lvis, img_ids, coco_api_paco_lvis
+    AMOS_images = [
+        x.replace("labels", "images")
+        for x in AMOS_labels
+    ]
+    print("AMOS: ", len(AMOS_images))
+    return AMOS_classes, AMOS_images, AMOS_labels
 
-
-def init_pascal_part(base_image_dir):
-    coco_api_pascal_part = COCO(
-        os.path.join(base_image_dir, "vlpart", "pascal_part", "train.json")
+def init_picai(base_image_dir):
+    picai_data_root = os.path.join(base_image_dir, "picai")
+    picai_classes = picai_CLASSES
+    picai_labels = sorted(
+        glob.glob(
+            os.path.join(picai_data_root, "preprocessed", "Train", "labels", "*.npy")
+        )
     )
-    all_classes = coco_api_pascal_part.loadCats(coco_api_pascal_part.getCatIds())
-    class_map_pascal_part = {}
-    for cat in all_classes:
-        cat_main, cat_part = cat["name"].strip().split(":")
-        name = (cat_main, cat_part)
-        class_map_pascal_part[cat["id"]] = name
-    img_ids = coco_api_pascal_part.getImgIds()
-    print("pascal_part: ", len(img_ids))
-    return class_map_pascal_part, img_ids, coco_api_pascal_part
+    picai_images = [
+        x.replace("labels", "images")
+        for x in picai_labels
+    ]
+    print("picai: ", len(picai_images))
+    return picai_classes, picai_images, picai_labels
 
+def init_prostate158(base_image_dir):
+    prostate158_data_root = os.path.join(base_image_dir, "prostate158")
+    prostate158_classes = prostate158_CLASSES
+    prostate158_labels = sorted(
+        glob.glob(
+            os.path.join(prostate158_data_root, "preprocessed", "Train", "labels", "*.npy")
+        )
+    )
+    prostate158_images = [
+        x.replace("labels", "images")
+        for x in prostate158_labels
+    ]
+    print("prostate158: ", len(prostate158_images))
+    return prostate158_classes, prostate158_images, prostate158_labels
+
+def init_CHAO(base_image_dir):
+    CHAO_data_root = os.path.join(base_image_dir, "CHAO")
+    CHAO_classes = CHAO_CLASSES
+    CHAO_labels = sorted(
+        glob.glob(
+            os.path.join(CHAO_data_root, "preprocessed", "Train", "labels", "*.npy")
+        )
+    )
+    CHAO_images = [
+        x.replace("labels", "images")
+        for x in CHAO_labels
+    ]
+    print("CHAO: ", len(CHAO_images))
+    return CHAO_classes, CHAO_images, CHAO_labels
+
+def init_ATLAS(base_image_dir):
+    ATLAS_data_root = os.path.join(base_image_dir, "ATLAS")
+    ATLAS_classes = ATLAS_CLASSES
+    ATLAS_labels = sorted(
+        glob.glob(
+            os.path.join(ATLAS_data_root, "preprocessed", "Train", "labels", "*.npy")
+        )
+    )
+    ATLAS_images = [
+        x.replace("labels", "images")
+        for x in ATLAS_labels
+    ]
+    print("ATLAS: ", len(ATLAS_images))
+    return ATLAS_classes, ATLAS_images, ATLAS_labels
 
 class SemSegDataset(torch.utils.data.Dataset):
     pixel_mean = torch.Tensor([123.675, 116.28, 103.53]).view(-1, 1, 1)
@@ -133,14 +110,14 @@ class SemSegDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         base_image_dir,
-        tokenizer,
-        vision_tower,
+        # tokenizer,
+        # vision_tower,
         samples_per_epoch=500 * 8 * 2 * 10,
         precision: str = "fp32",
         image_size: int = 224,
         num_classes_per_sample: int = 3,
         exclude_val=False,
-        sem_seg_data="ade20k||cocostuff||partimagenet||pascal_part||paco_lvis||mapillary",
+        sem_seg_data="ATLAS||ACDC||CHAO||prostate158||AMOS||picai",
     ):
         self.exclude_val = exclude_val
         self.samples_per_epoch = samples_per_epoch
@@ -148,10 +125,10 @@ class SemSegDataset(torch.utils.data.Dataset):
 
         self.base_image_dir = base_image_dir
         self.image_size = image_size
-        self.tokenizer = tokenizer
+        # self.tokenizer = tokenizer
         self.precision = precision
         self.transform = ResizeLongestSide(image_size)
-        self.clip_image_processor = CLIPImageProcessor.from_pretrained(vision_tower)
+        # self.clip_image_processor = CLIPImageProcessor.from_pretrained(vision_tower)
 
         self.short_question_list = SHORT_QUESTION_LIST
         self.answer_list = ANSWER_LIST
@@ -164,11 +141,6 @@ class SemSegDataset(torch.utils.data.Dataset):
             classes, images, labels = eval("init_{}".format(ds))(base_image_dir)
             self.data2list[ds] = (images, labels)
             self.data2classes[ds] = classes
-
-        if "cocostuff" in self.sem_seg_datas:
-            self.cocostuff_class2index = {
-                c: i for i, c in enumerate(self.data2classes["cocostuff"])
-            }
 
     def __len__(self):
         return self.samples_per_epoch
@@ -189,7 +161,10 @@ class SemSegDataset(torch.utils.data.Dataset):
         ds = random.randint(0, len(self.sem_seg_datas) - 1)
         ds = self.sem_seg_datas[ds]
 
-        if ds in ["paco_lvis", "pascal_part"]:
+        if ds in ["ACDC", "AMOS", "picai", "prostate158", "ATLAS", "CHAO"]:
+            class_map = self.data2classes[ds]
+            img_ids, lbl = self.data2list[ds]
+        elif ds in ["paco_lvis", "pascal_part"]:
             class_map = self.data2classes[ds]
             img_ids, coco_api = self.data2list[ds]
             idx = random.randint(0, len(img_ids) - 1)

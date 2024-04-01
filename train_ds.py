@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from model.LISA import LISAForCausalLM
 from model.llava import conversation as conversation_lib
-from utils.dataset import HybridDataset, ValDataset, collate_fn
+from utils.Data_utils import HybridDataset, ValDataset, collate_fn
 from utils.utils import (DEFAULT_IM_END_TOKEN, DEFAULT_IM_START_TOKEN,
                          AverageMeter, ProgressMeter, Summary, dict_to_cuda,
                          intersectionAndUnionGPU)
@@ -49,7 +49,7 @@ def parse_args(args):
     parser.add_argument("--sample_rates", default="9,3,3,1", type=str)
     parser.add_argument(
         "--sem_seg_data",
-        default="ade20k||cocostuff||pascal_part||paco_lvis||mapillary",
+        default="ACDC||AMOS||ATLAS||CHAO||prostate158||picai",
         type=str,
     )
     parser.add_argument(
@@ -108,15 +108,15 @@ def parse_args(args):
 def main(args):
     args = parse_args(args)
     args.version="./model/llava/ckpt"
-    args.dataset_dir = '/data/leo/drive1/Datasets/vis'
+    args.dataset_dir = '/mnt/ssd1/Datasets/MRI'
     args.vision_pretrained = "./model/segment_anything/ckpt/sam_vit_h_4b8939.pth"
     # args.vision_pretrained="./model/medsam/medsam_vit_b.pth"
 
     # args.dataset = "sem_seg||refer_seg||vqa||reason_seg"
-    args.dataset = "sem_seg||refer_seg"
+    args.dataset = "sem_seg"
 
     # args.sample_rates = "9,3,3,1"
-    args.sample_rates = "9,3"
+    args.sample_rates = "9"
     args.exp_name="lisa-7b"
 
     args.log_dir = os.path.join(args.log_base_dir, args.exp_name)
@@ -261,20 +261,20 @@ def main(args):
         explanatory=args.explanatory,
     )
 
-    if args.no_eval == False:
-        val_dataset = ValDataset(
-            args.dataset_dir,
-            tokenizer,
-            args.vision_tower,
-            args.val_dataset,
-            args.image_size,
-        )
-        print(
-            f"Training with {len(train_dataset)} examples and validating with {len(val_dataset)} examples."
-        )
-    else:
-        val_dataset = None
-        print(f"Training with {len(train_dataset)} examples.")
+    # if args.no_eval == False:
+    #     val_dataset = ValDataset(
+    #         args.dataset_dir,
+    #         tokenizer,
+    #         args.vision_tower,
+    #         args.val_dataset,
+    #         args.image_size,
+    #     )
+    #     print(
+    #         f"Training with {len(train_dataset)} examples and validating with {len(val_dataset)} examples."
+    #     )
+    # else:
+    #     val_dataset = None
+    #     print(f"Training with {len(train_dataset)} examples.")
 
     ds_config = {
         "train_micro_batch_size_per_gpu": args.batch_size,
@@ -345,7 +345,7 @@ def main(args):
                 args.resume, args.start_epoch
             )
         )
-
+    val_dataset = None ##can be commented
     # validation dataset
     if val_dataset is not None:
         assert args.val_batch_size == 1

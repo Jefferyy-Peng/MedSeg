@@ -11,6 +11,13 @@ DEFAULT_IMAGE_PATCH_TOKEN = "<im_patch>"
 DEFAULT_IM_START_TOKEN = "<im_start>"
 DEFAULT_IM_END_TOKEN = "<im_end>"
 
+ACDC_CLASSES = {'0': 'background', '1': 'RV cavity', '2': 'myocardium', '3': ' LV cavity'} # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=8360453 page 5
+AMOS_CLASSES = {"0": "background", "1": "spleen", "2": "right kidney", "3": "left kidney", "4": "gall bladder", "5": "esophagus", "6": "liver", "7": "stomach", "8": "arota", "9": "postcava", "10": "pancreas", "11": "right adrenal gland", "12": "left adrenal gland", "13": "duodenum", "14": "bladder", "15": "prostate/uterus"} # AMOS/dataset.json
+picai_CLASSES = {"0": "background", "1": "lesion"} # picai/dataset.json
+prostate158_CLASSES = {'0': 'background', '1': 'central gland', '2': 'peripheral zone of prostate', '3': 'PCa lesions'}
+ATLAS_CLASSES = {'0': 'background', '1': 'lesion'}
+CHAO_CLASSES = {'0': 'background', '1': 'Liver', '2': 'Right kidney', '3': 'Left kidney', '4': 'Spleen'}
+
 SHORT_QUESTION_LIST = [
     DEFAULT_IMAGE_TOKEN + "\n" + "Can you segment the {class_name} in this image?",
     DEFAULT_IMAGE_TOKEN + "\n" + "Please segment the {class_name} in this image.",
